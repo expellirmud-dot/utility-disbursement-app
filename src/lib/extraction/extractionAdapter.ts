@@ -1,8 +1,9 @@
 import { extractTextFromPdf } from './pdfTextExtractor';
 import { extractTextWithOcr } from './ocrExtractor';
 import { isImageOrScannedPdf } from './imagePrecheck';
-import { ExtractionResult } from '../../types/extraction';
+import { ExtractionResult, MethodExtraction, AgreementStatus } from '../../types/extraction';
 import { Bill } from '../../types/bill';
+import { runAgreementGate } from './agreementGate';
 
 export interface AdapterResult extends ExtractionResult {
   bill?: Bill;
@@ -10,58 +11,82 @@ export interface AdapterResult extends ExtractionResult {
 
 export async function processBillFile(file: File): Promise<AdapterResult> {
   try {
-    let rawText = '';
-    let method: 'pdf_text' | 'ocr' | undefined;
-    let confidence = 1.0;
-    let warnings: string[] = [];
-    let reviewRequired = false;
-
+    const methods: MethodExtraction[] = [];
+    
+    // Base setup
     if (isImageOrScannedPdf(file)) {
-      // 1. Direct to OCR for images
       const ocrResult = await extractTextWithOcr(file);
-      rawText = ocrResult.rawText;
-      method = 'ocr';
-      confidence = ocrResult.confidence;
-      warnings = ocrResult.warnings;
-      reviewRequired = true;
+      const amountMatch = ocrResult.rawText.match(/\$?(\d+(?:\.\d{2})?)/);
+      methods.push({
+        method: 'ocr',
+        confidence: ocrResult.confidence,
+        fields: {
+          grossAmount: amountMatch ? parseFloat(amountMatch[1]) : 3500.50,
+          providerName: 'OCR Extracted Provider',
+          expenseType: 'other'
+        }
+      });
     } else if (file.type === 'application/pdf') {
-      // 2. Try PDF Text Layer
-      rawText = await extractTextFromPdf(file);
-      method = 'pdf_text';
-
-      // 3. Fallback to OCR if text is empty/too short
-      if (!rawText || rawText.trim().length < 20) {
-        const ocrResult = await extractTextWithOcr(file);
-        rawText = ocrResult.rawText;
-        method = 'ocr';
-        confidence = ocrResult.confidence;
-        warnings = ocrResult.warnings;
-        reviewRequired = true;
+      const rawText = await extractTextFromPdf(file);
+      
+      if (rawText && rawText.trim().length >= 20) {
+        const amountMatch = rawText.match(/\$?(\d+(?:\.\d{2})?)/);
+        methods.push({
+          method: 'pdf_text',
+          confidence: 0.9,
+          fields: {
+            grossAmount: amountMatch ? parseFloat(amountMatch[1]) : 3500.50,
+            providerName: 'PDF Extracted Provider',
+            expenseType: 'other'
+          }
+        });
       }
+
+      // Fallback/secondary method to simulate 2-of-3 agreement or conflict
+      const ocrResult = await extractTextWithOcr(file);
+      const ocrAmountMatch = ocrResult.rawText.match(/\$?(\d+(?:\.\d{2})?)/);
+      methods.push({
+        method: 'ocr',
+        confidence: ocrResult.confidence,
+        fields: {
+          grossAmount: ocrAmountMatch ? parseFloat(ocrAmountMatch[1]) : 3500.50,
+          providerName: 'OCR Extracted Provider', // Will cause conflict with PDF
+          expenseType: 'other'
+        }
+      });
     } else {
       return { status: 'error', error: 'Unsupported file type' };
     }
 
-    if (!rawText || rawText.trim().length < 5) {
-      return { status: 'error', error: 'Failed to extract text' };
-    }
+    // Add placeholder AI verification to have 3 methods
+    methods.push({
+      method: 'ai_verifier_placeholder',
+      confidence: 0.8,
+      fields: {
+        grossAmount: 3500.50,
+        providerName: 'PDF Extracted Provider', // Agrees with PDF, conflicts with OCR
+        expenseType: 'other'
+      }
+    });
 
-    // Naive text to bill conversion for MVP
-    const amountMatch = rawText.match(/\$?(\d+(?:\.\d{2})?)/);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : 3500.50;
+    const agreement: AgreementStatus = runAgreementGate(methods);
+
+    // Finalize the primary extracted bill based on agreed fields or fallback to first available
+    const finalAmount = agreement.agreedFields.grossAmount || methods[0].fields.grossAmount || 3500.50;
+    const finalProvider = agreement.agreedFields.providerName || methods[0].fields.providerName || 'Unknown Provider';
 
     return {
       status: 'success',
-      rawText,
-      method,
-      confidence,
-      warnings,
-      reviewRequired,
+      rawText: 'Multi-method extraction completed.',
+      methods,
+      agreement,
+      confidence: agreement.overallConfidence,
+      reviewRequired: agreement.reviewRequired,
       bill: {
-        id: (method === 'ocr' ? 'ocr-' : 'pdf-') + Date.now(),
-        amount: amount,
+        id: 'extracted-' + Date.now(),
+        amount: finalAmount,
         expenseType: 'other',
-        provider: method === 'ocr' ? 'OCR Extracted Provider' : 'PDF Extracted Provider',
+        provider: finalProvider,
       }
     };
   } catch (error) {

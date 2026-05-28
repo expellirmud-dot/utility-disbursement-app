@@ -9,8 +9,14 @@ import { BillValidationPanel } from './BillValidationPanel';
 import { buildDisbursementDraft } from '../lib/disbursementDraftBuilder';
 import { DisbursementDraftPreview } from './DisbursementDraftPreview';
 import { ReadinessChecklist } from './ReadinessChecklist';
+import { ExtractionResult } from '../types/extraction';
 
-export function BillReviewForm({ bill }: { bill: Bill }) {
+// Extending Bill locally if it carries extraction metadata for the UI
+interface ExtendedBill extends Bill {
+  extractionMetadata?: ExtractionResult;
+}
+
+export function BillReviewForm({ bill }: { bill: ExtendedBill }) {
   const router = useRouter();
   const [normalized] = useState<NormalizedBill>(normalizeBill(bill));
   const [amount, setAmount] = useState(normalized.grossAmount);
@@ -26,7 +32,12 @@ export function BillReviewForm({ bill }: { bill: Bill }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h2 className="text-lg font-bold">Review Extracted Data</h2>
-          <BillValidationPanel warnings={normalized.warnings} reviewRequired={normalized.reviewRequired} />
+          <BillValidationPanel 
+            warnings={normalized.warnings} 
+            reviewRequired={normalized.reviewRequired || bill.extractionMetadata?.reviewRequired || false} 
+            agreement={bill.extractionMetadata?.agreement}
+            methods={bill.extractionMetadata?.methods}
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium">Amount (Gross)</label>
             <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="block w-full border p-2"/>
