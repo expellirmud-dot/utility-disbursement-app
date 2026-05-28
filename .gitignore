@@ -42,3 +42,21 @@ next-env.d.ts
 
 # Local legacy archives
 archives/
+
+# Serena
+.serena/cache/
+
+# Legacy archives
+archives/
+
+# Next.js
+.next/
+out/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
