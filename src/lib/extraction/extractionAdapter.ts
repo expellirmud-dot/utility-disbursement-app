@@ -90,7 +90,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
     const agreement: AgreementStatus = runAgreementGate(methods);
 
     // Finalize the primary extracted bill based on agreed fields or fallback to first available
-    const finalAmount = agreement.agreedFields.grossAmount || methods[0]?.fields.grossAmount || 3500.50;
+    const finalAmount = agreement.agreedFields.grossAmount ?? methods[0]?.fields.grossAmount ?? undefined;
     const finalProvider = agreement.agreedFields.providerName || methods[0]?.fields.providerName || 'Unknown Provider';
 
     return {
@@ -103,7 +103,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
       reviewRequired: agreement.reviewRequired,
       bill: {
         id: 'extracted-' + Date.now(),
-        amount: finalAmount,
+        amount: finalAmount ?? 3500.50, // Keep safe UI default if all methods fail completely
         expenseType: (agreement.agreedFields.expenseType as ExpenseType) || 'other',
         provider: finalProvider,
         billNumber: agreement.agreedFields.billNumber || agreement.agreedFields.documentNumber,

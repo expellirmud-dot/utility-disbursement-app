@@ -29,7 +29,14 @@
 - [ ] Test case: Water bill -> Withholding Tax should be 1% of Gross
 - [ ] Test case: Telephone bill -> Withholding Tax should be 1% of Gross
 
-## 6. Edge Cases
+## 6. Extraction Parser (Smoke Tests)
+- [ ] Run `npm run test:extraction`
+- [ ] Verify PEA fixture passes (extracts provider, doc number, date, CA, total amount, signer)
+- [ ] Verify NT fixture passes
+- [ ] Verify OCR Noise fixture passes
+- [ ] Verify Multi-meter Summary fixture passes
+
+## 7. Edge Cases
 - [ ] Empty state: Access /memos/preview without a draft -> Should show sample data and 'Demo Sample Data' badge
 - [ ] Empty state: Access /elaas/prepare without a draft -> Should show sample data and 'Demo Sample Data' badge
 - [ ] Empty state: Access /bills/review without a draft -> Should show 'Loading...' or an error message (Currently Loading)
