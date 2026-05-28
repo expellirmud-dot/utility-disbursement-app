@@ -67,3 +67,14 @@ Report:
 - changed files
 - validation result
 - remaining risks
+
+## Fiscal Year Rule
+
+Thai municipal budget fiscal year is not the calendar year.
+
+Fiscal year B.E. YYYY starts on October 1 of B.E. YYYY-1 and ends on September 30 of B.E. YYYY.
+
+Example:
+Fiscal year B.E. 2569 starts on October 1, 2568 and ends on September 30, 2569.
+
+Database, budget records, disbursement records, filters, reports, and e-LAAS preparation must use fiscal-year logic, not calendar-year logic.
