@@ -4,10 +4,14 @@ export interface ExtractedFields {
   providerName?: string;
   expenseType?: string;
   billNumber?: string;
+  documentNumber?: string;
   billDate?: string;
+  issueDate?: string;
   serviceMonth?: string;
   grossAmount?: number;
   customerNumber?: string;
+  accountNumber?: string;
+  signer?: string;
 }
 
 export interface MethodExtraction {
@@ -32,6 +36,7 @@ export interface ExtractionResult {
   confidence?: number;
   warnings?: string[];
   reviewRequired?: boolean;
+  needsFallback?: boolean;
   agreement?: AgreementStatus;
   methods?: MethodExtraction[];
 }

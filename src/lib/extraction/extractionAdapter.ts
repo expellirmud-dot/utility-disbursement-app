@@ -5,6 +5,8 @@ import { ExtractionResult, MethodExtraction, AgreementStatus } from '../../types
 import { Bill } from '../../types/bill';
 import { runAgreementGate } from './agreementGate';
 import { runMockAiVerifier } from './mockAiVerifier';
+import { parsePdfFields } from './pdfFieldParser';
+import { ExpenseType } from '../../types/disbursement';
 
 export interface AdapterResult extends ExtractionResult {
   bill?: Bill;
@@ -14,6 +16,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
   try {
     const methods: MethodExtraction[] = [];
     let primaryRawText = '';
+    let needsFallback = false;
     
     // Base setup
     if (isImageOrScannedPdf(file)) {
@@ -29,64 +32,71 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
           expenseType: 'other'
         }
       });
+      
+      // Call Mock AI Verifier only for OCR fallback (not for real PDF)
+      const aiResult = await runMockAiVerifier(primaryRawText || 'mock text');
+      methods.push({
+        method: 'ai_verifier_placeholder',
+        confidence: aiResult.overallConfidence,
+        fields: {
+          grossAmount: aiResult.grossAmount.value ?? undefined,
+          providerName: aiResult.providerName.value ?? undefined,
+          expenseType: aiResult.expenseType.value ?? undefined,
+          billNumber: aiResult.billNumber.value ?? undefined,
+          billDate: aiResult.billDate.value ?? undefined,
+          serviceMonth: aiResult.serviceMonth.value ?? undefined,
+          customerNumber: aiResult.customerNumber.value ?? undefined
+        }
+      });
     } else if (file.type === 'application/pdf') {
       const rawText = await extractTextFromPdf(file);
       primaryRawText = rawText;
       
       if (rawText && rawText.trim().length >= 20) {
-        const amountMatch = rawText.match(/\$?(\d+(?:\.\d{2})?)/);
+        const parsedFields = parsePdfFields(rawText);
+        
         methods.push({
           method: 'pdf_text',
-          confidence: 0.9,
-          fields: {
-            grossAmount: amountMatch ? parseFloat(amountMatch[1]) : 3500.50,
-            providerName: 'PDF Extracted Provider',
-            expenseType: 'other'
-          }
+          confidence: 0.95,
+          fields: parsedFields
         });
+        
+        // If key fields are missing, mark for fallback
+        if (!parsedFields.grossAmount || !parsedFields.providerName) {
+          needsFallback = true;
+        }
+      } else {
+        needsFallback = true;
       }
 
-      // Fallback/secondary method to simulate 2-of-3 agreement or conflict
-      const ocrResult = await extractTextWithOcr(file);
-      const ocrAmountMatch = ocrResult.rawText.match(/\$?(\d+(?:\.\d{2})?)/);
-      methods.push({
-        method: 'ocr',
-        confidence: ocrResult.confidence,
-        fields: {
-          grossAmount: ocrAmountMatch ? parseFloat(ocrAmountMatch[1]) : 3500.50,
-          providerName: 'OCR Extracted Provider', // Will cause conflict with PDF
-          expenseType: 'other'
-        }
-      });
+      if (needsFallback) {
+        // Fallback to mock OCR if PDF text is insufficient
+        const ocrResult = await extractTextWithOcr(file);
+        const parsedOcrFields = parsePdfFields(ocrResult.rawText);
+        // Ensure at least some fallback data
+        if (!parsedOcrFields.grossAmount) parsedOcrFields.grossAmount = 3500.50;
+        if (!parsedOcrFields.providerName) parsedOcrFields.providerName = 'OCR Extracted Provider';
+        
+        methods.push({
+          method: 'ocr',
+          confidence: ocrResult.confidence,
+          fields: parsedOcrFields
+        });
+      }
     } else {
       return { status: 'error', error: 'Unsupported file type' };
     }
 
-    // Call Mock AI Verifier
-    const aiResult = await runMockAiVerifier(primaryRawText || 'mock text');
-    methods.push({
-      method: 'ai_verifier_placeholder',
-      confidence: aiResult.overallConfidence,
-      fields: {
-        grossAmount: aiResult.grossAmount.value ?? undefined,
-        providerName: aiResult.providerName.value ?? undefined,
-        expenseType: aiResult.expenseType.value ?? undefined,
-        billNumber: aiResult.billNumber.value ?? undefined,
-        billDate: aiResult.billDate.value ?? undefined,
-        serviceMonth: aiResult.serviceMonth.value ?? undefined,
-        customerNumber: aiResult.customerNumber.value ?? undefined
-      }
-    });
-
     const agreement: AgreementStatus = runAgreementGate(methods);
 
     // Finalize the primary extracted bill based on agreed fields or fallback to first available
-    const finalAmount = agreement.agreedFields.grossAmount || methods[0].fields.grossAmount || 3500.50;
-    const finalProvider = agreement.agreedFields.providerName || methods[0].fields.providerName || 'Unknown Provider';
+    const finalAmount = agreement.agreedFields.grossAmount || methods[0]?.fields.grossAmount || 3500.50;
+    const finalProvider = agreement.agreedFields.providerName || methods[0]?.fields.providerName || 'Unknown Provider';
 
     return {
-      status: 'success',
-      rawText: 'Multi-method extraction completed.',
+      status: needsFallback ? 'needs_ocr' : 'success',
+      rawText: primaryRawText,
+      needsFallback,
       methods,
       agreement,
       confidence: agreement.overallConfidence,
@@ -94,8 +104,14 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
       bill: {
         id: 'extracted-' + Date.now(),
         amount: finalAmount,
-        expenseType: 'other',
+        expenseType: (agreement.agreedFields.expenseType as ExpenseType) || 'other',
         provider: finalProvider,
+        billNumber: agreement.agreedFields.billNumber || agreement.agreedFields.documentNumber,
+        date: agreement.agreedFields.billDate || agreement.agreedFields.issueDate,
+        documentNumber: agreement.agreedFields.documentNumber,
+        issueDate: agreement.agreedFields.issueDate,
+        accountNumber: agreement.agreedFields.accountNumber,
+        signer: agreement.agreedFields.signer
       }
     };
   } catch (error) {
