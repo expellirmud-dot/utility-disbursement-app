@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from 'react';
 import { DisbursementDraft } from '../../../types/disbursementDraft';
@@ -11,10 +12,8 @@ export default function Page() {
   useEffect(() => {
     const data = localStorage.getItem('tempDraft');
     if (data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(JSON.parse(data));
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({
         id: 'mock-draft',
         readiness: { status: 'ready', missingFields: [], blockers: [] },
