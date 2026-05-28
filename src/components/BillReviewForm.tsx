@@ -23,9 +23,43 @@ export function BillReviewForm({ bill }: { bill: ExtendedBill }) {
 
   const draft = useMemo(() => {
     const result = buildDisbursementDraft(normalized, { grossAmount: amount });
-    localStorage.setItem('tempDraft', JSON.stringify(result));
     return result;
   }, [normalized, amount]);
+
+  const saveDraftAndNavigate = async (path: string) => {
+    try {
+      const uploadedBillId = localStorage.getItem('tempUploadedBillId');
+      const payload = {
+        fiscalYear: Number(draft.memoFields.fiscalYear),
+        expenseType: draft.memoFields.expenseType,
+        providerName: draft.memoFields.providerName,
+        memoFields: draft.memoFields,
+        readiness: draft.readiness,
+        ...(uploadedBillId && { uploadedBillId })
+      };
+
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      let draftId = '';
+      if (res.ok) {
+        const { data: savedDraft } = await res.json();
+        draftId = savedDraft.id;
+        localStorage.setItem('tempDraft', JSON.stringify(savedDraft));
+      } else {
+        localStorage.setItem('tempDraft', JSON.stringify(draft));
+      }
+      
+      router.push(draftId ? `${path}?draftId=${draftId}` : path);
+    } catch (e) {
+      console.error(e);
+      localStorage.setItem('tempDraft', JSON.stringify(draft));
+      router.push(path);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -51,7 +85,7 @@ export function BillReviewForm({ bill }: { bill: ExtendedBill }) {
             missingFields={draft.readiness.missingFields} 
             blockers={draft.readiness.blockers} 
           />
-          <DisbursementDraftPreview draft={draft} />
+          <DisbursementDraftPreview draft={draft} onPreview={() => saveDraftAndNavigate('/memos/preview')} onPrepare={() => saveDraftAndNavigate('/elaas/prepare')} />
         </div>
       </div>
       <div className="flex items-center justify-between pt-4 border-t">
@@ -60,14 +94,14 @@ export function BillReviewForm({ bill }: { bill: ExtendedBill }) {
         </button>
         <div className="flex gap-3">
           <button 
-            onClick={() => router.push('/memos/preview')} 
+            onClick={() => saveDraftAndNavigate('/memos/preview')} 
             disabled={draft.readiness.status === 'blocked'}
             className={`px-4 py-2 rounded text-white font-bold transition-colors ${draft.readiness.status === 'blocked' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             Preview Memo
           </button>
           <button 
-            onClick={() => router.push('/elaas/prepare')} 
+            onClick={() => saveDraftAndNavigate('/elaas/prepare')} 
             disabled={draft.readiness.status === 'blocked'}
             className={`px-4 py-2 rounded text-white font-bold transition-colors ${draft.readiness.status === 'blocked' ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
           >

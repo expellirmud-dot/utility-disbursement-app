@@ -25,6 +25,25 @@ export function BillUpload() {
           bill = await mockOcrExtract(file);
         }
         
+        try {
+          const uploadRes = await fetch('/api/uploads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type,
+              extractedJson: JSON.stringify(bill),
+            })
+          });
+          if (uploadRes.ok) {
+            const { data: uploadData } = await uploadRes.json();
+            localStorage.setItem('tempUploadedBillId', uploadData.id);
+          }
+        } catch (err) {
+          console.error('Failed to post upload metadata', err);
+        }
+        
         // In a real app, we might pass this via URL params, context, or state management
         localStorage.setItem('tempBill', JSON.stringify(bill));
         router.push('/bills/review');
