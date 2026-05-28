@@ -5,7 +5,7 @@ import { ExtractedFields } from '../../types/extraction';
  * Input: 15/05/2567 -> 2024-05-15
  */
 export function normalizeDate(dateStr: string): string {
-  const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  const match = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (!match) return dateStr;
   
   const [, d, m, y] = match;
@@ -53,21 +53,23 @@ export function parsePdfFields(rawText: string): ExtractedFields {
   }
 
   // 3. Bill Number / Document Number
-  const docMatch = text.match(/(?:เลขที่ใบแจ้งหนี้|ใบแจ้งหนี้เลขที่|เลขที่เอกสาร|เลขที่หนังสือ|เลขที่|Invoice No\.|No\.|Doc No\.)\s*([A-Za-z0-9-]+)/i);
+  const docMatch = text.match(/(?:เลขที่ใบแจ้งค่าใช้บริการ\s*\(Invoice No\.\)|เลขที่ใบแจ้งหนี้|ใบแจ้งหนี้เลขที่|เลขที่เอกสาร|เลขที่หนังสือ|เลขที่|Invoice No\.|No\.|Doc No\.)\s*:?\s*([A-Za-z0-9-]+)/i) 
+    || text.match(/#(\d{10,15})/);
   if (docMatch) {
     fields.billNumber = docMatch[1];
     fields.documentNumber = docMatch[1];
   }
 
   // 4. Customer / Account Number
-  const accMatch = text.match(/(?:หมายเลขผู้ใช้ไฟฟ้า|บัญชีแสดงสัญญา|หมายเลขบริการ|Account No\.|CA|Ref No\.)\s*([A-Za-z0-9-]+)/i);
+  const accMatch = text.match(/(?:รหัสลูกค้า\s*\(Account No\.\)|หมายเลขผู้ใช้ไฟฟ้า|บัญชีแสดงสัญญา|หมายเลขบริการ|Account No\.|Ref No\.|CA Number)\s*:?\s*([A-Za-z0-9-]+)/i) 
+    || text.match(/(?:CA)\s*:?\s*(\d{10,15})/i);
   if (accMatch) {
     fields.accountNumber = accMatch[1];
     fields.customerNumber = accMatch[1];
   }
 
   // 5. Dates
-  const dateMatch = text.match(/(?:วันที่ออกใบแจ้งหนี้|วันที่|Date)\s*([\d]{1,2}\/[\d]{1,2}\/[\d]{2,4})/);
+  const dateMatch = text.match(/(?:วันที่ออกใบแจ้งค่าใช้บริการ|วันที่ออกใบแจ้งหนี้|วันที่|Date|Document Date)\s*:?\s*([\d]{1,2}[\/\-][\d]{1,2}[\/\-][\d]{2,4})/);
   if (dateMatch) {
     const normDate = normalizeDate(dateMatch[1]);
     fields.billDate = normDate;
