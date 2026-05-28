@@ -4,7 +4,7 @@ import { isImageOrScannedPdf } from './imagePrecheck';
 import { ExtractionResult, MethodExtraction, AgreementStatus } from '../../types/extraction';
 import { Bill } from '../../types/bill';
 import { runAgreementGate } from './agreementGate';
-import { runMockAiVerifier } from './mockAiVerifier';
+import { runGeminiAiVerifier } from './geminiAiVerifier';
 import { parsePdfFields } from './pdfFieldParser';
 import { ExpenseType } from '../../types/disbursement';
 
@@ -33,19 +33,19 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
         }
       });
       
-      // Call Mock AI Verifier only for OCR fallback (not for real PDF)
-      const aiResult = await runMockAiVerifier(primaryRawText || 'mock text');
+      // Call Gemini AI Verifier for OCR fallback
+      const aiResult = await runGeminiAiVerifier(primaryRawText || 'mock text');
       methods.push({
         method: 'ai_verifier_placeholder',
         confidence: aiResult.overallConfidence,
         fields: {
-          grossAmount: aiResult.grossAmount.value ?? undefined,
-          providerName: aiResult.providerName.value ?? undefined,
-          expenseType: aiResult.expenseType.value ?? undefined,
-          billNumber: aiResult.billNumber.value ?? undefined,
-          billDate: aiResult.billDate.value ?? undefined,
-          serviceMonth: aiResult.serviceMonth.value ?? undefined,
-          customerNumber: aiResult.customerNumber.value ?? undefined
+          grossAmount: aiResult.grossAmount?.value ?? undefined,
+          providerName: aiResult.providerName?.value ?? undefined,
+          expenseType: aiResult.expenseType?.value ?? undefined,
+          billNumber: aiResult.billNumber?.value ?? undefined,
+          billDate: aiResult.billDate?.value ?? undefined,
+          serviceMonth: aiResult.serviceMonth?.value ?? undefined,
+          customerNumber: aiResult.customerNumber?.value ?? undefined
         }
       });
     } else if (file.type === 'application/pdf') {
