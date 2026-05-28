@@ -1,2 +1,0 @@
-510 passed in 24.15s
-Exit code: 0
