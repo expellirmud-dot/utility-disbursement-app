@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bill } from '../types/bill';
 import { calculateTax } from '../lib/taxRules';
 import { normalizeBill, NormalizedBill } from '../lib/billNormalization';
@@ -10,6 +11,7 @@ import { DisbursementDraftPreview } from './DisbursementDraftPreview';
 import { ReadinessChecklist } from './ReadinessChecklist';
 
 export function BillReviewForm({ bill }: { bill: Bill }) {
+  const router = useRouter();
   const [normalized] = useState<NormalizedBill>(normalizeBill(bill));
   const [amount, setAmount] = useState(normalized.grossAmount);
 
@@ -41,10 +43,26 @@ export function BillReviewForm({ bill }: { bill: Bill }) {
           <DisbursementDraftPreview draft={draft} />
         </div>
       </div>
-      <div className="flex justify-end pt-4">
-        <button className={`px-4 py-2 rounded text-white font-bold ${draft.readiness.status === 'blocked' ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`} disabled={draft.readiness.status === 'blocked'}>
-          Confirm & Create Disbursement
+      <div className="flex items-center justify-between pt-4 border-t">
+        <button onClick={() => router.push('/')} className="text-sm text-zinc-500 hover:text-zinc-700">
+          ← Return to Dashboard
         </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => router.push('/memos/preview')} 
+            disabled={draft.readiness.status === 'blocked'}
+            className={`px-4 py-2 rounded text-white font-bold transition-colors ${draft.readiness.status === 'blocked' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            Preview Memo
+          </button>
+          <button 
+            onClick={() => router.push('/elaas/prepare')} 
+            disabled={draft.readiness.status === 'blocked'}
+            className={`px-4 py-2 rounded text-white font-bold transition-colors ${draft.readiness.status === 'blocked' ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+          >
+            Prepare e-LAAS Data
+          </button>
+        </div>
       </div>
     </div>
   );

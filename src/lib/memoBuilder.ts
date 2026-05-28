@@ -10,9 +10,9 @@ export const buildMemo = (draft: DisbursementDraft): Memo => {
       docNumber: `มท ${Math.floor(Math.random() * 10000)}/2568`,
     },
     content: {
-      subject: `ขออนุมัติเบิกจ่ายค่า${memoFields.expenseType}`,
+      subject: `ขออนุมัติเบิกจ่ายเงินค่า${memoFields.expenseType}`,
       recipient: 'นายกเทศมนตรี',
-      body: `ด้วยทางหน่วยงานมีความประสงค์จะขอเบิกจ่ายค่า${memoFields.expenseType} ของ${memoFields.providerName} ประจำเดือน${memoFields.serviceMonth} ตามใบแจ้งหนี้เลขที่ ${memoFields.billNumber} ลงวันที่ ${memoFields.billDate}`,
+      body: `ด้วย${memoFields.providerName} ได้ส่งใบแจ้งหนี้ค่า${memoFields.expenseType} ประจำเดือน${memoFields.serviceMonth} ตามใบแจ้งหนี้เลขที่ ${memoFields.billNumber} ลงวันที่ ${memoFields.billDate} เพื่อให้ทางเทศบาลดำเนินการเบิกจ่ายเงินงบประมาณประจำปี พ.ศ. ${memoFields.fiscalYear} โดยมีรายละเอียดดังนี้`,
       details: {
         providerName: memoFields.providerName,
         expenseType: memoFields.expenseType,
@@ -25,8 +25,8 @@ export const buildMemo = (draft: DisbursementDraft): Memo => {
       },
     },
     footer: {
-      approvalSignature: '(ลงชื่อ)............................................',
-      approvalDate: 'วันที่......./......./.......',
+      approvalSignature: '(ลงชื่อ)...........................................................',
+      approvalDate: 'วันที่.......เดือน..........................พ.ศ. .......',
     },
   };
 };
