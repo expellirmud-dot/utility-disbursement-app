@@ -92,6 +92,6 @@ export function runAgreementGate(extractions: MethodExtraction[]): AgreementStat
     agreedFields,
     conflictingFields,
     overallConfidence: isAgreed ? 0.95 : Math.max(0.5, ...extractions.map(e => e.confidence)) - 0.1,
-    reviewRequired: !isAgreed // Always require review if not agreed (or even if agreed, human review is preserved by normalization)
+    reviewRequired: true // Always require human review (V1 domain rule)
   };
 }

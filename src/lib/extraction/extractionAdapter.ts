@@ -4,6 +4,7 @@ import { isImageOrScannedPdf } from './imagePrecheck';
 import { ExtractionResult, MethodExtraction, AgreementStatus } from '../../types/extraction';
 import { Bill } from '../../types/bill';
 import { runAgreementGate } from './agreementGate';
+import { runMockAiVerifier } from './mockAiVerifier';
 
 export interface AdapterResult extends ExtractionResult {
   bill?: Bill;
@@ -12,10 +13,12 @@ export interface AdapterResult extends ExtractionResult {
 export async function processBillFile(file: File): Promise<AdapterResult> {
   try {
     const methods: MethodExtraction[] = [];
+    let primaryRawText = '';
     
     // Base setup
     if (isImageOrScannedPdf(file)) {
       const ocrResult = await extractTextWithOcr(file);
+      primaryRawText = ocrResult.rawText;
       const amountMatch = ocrResult.rawText.match(/\$?(\d+(?:\.\d{2})?)/);
       methods.push({
         method: 'ocr',
@@ -28,6 +31,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
       });
     } else if (file.type === 'application/pdf') {
       const rawText = await extractTextFromPdf(file);
+      primaryRawText = rawText;
       
       if (rawText && rawText.trim().length >= 20) {
         const amountMatch = rawText.match(/\$?(\d+(?:\.\d{2})?)/);
@@ -58,14 +62,19 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
       return { status: 'error', error: 'Unsupported file type' };
     }
 
-    // Add placeholder AI verification to have 3 methods
+    // Call Mock AI Verifier
+    const aiResult = await runMockAiVerifier(primaryRawText || 'mock text');
     methods.push({
       method: 'ai_verifier_placeholder',
-      confidence: 0.8,
+      confidence: aiResult.overallConfidence,
       fields: {
-        grossAmount: 3500.50,
-        providerName: 'PDF Extracted Provider', // Agrees with PDF, conflicts with OCR
-        expenseType: 'other'
+        grossAmount: aiResult.grossAmount.value ?? undefined,
+        providerName: aiResult.providerName.value ?? undefined,
+        expenseType: aiResult.expenseType.value ?? undefined,
+        billNumber: aiResult.billNumber.value ?? undefined,
+        billDate: aiResult.billDate.value ?? undefined,
+        serviceMonth: aiResult.serviceMonth.value ?? undefined,
+        customerNumber: aiResult.customerNumber.value ?? undefined
       }
     });
 
