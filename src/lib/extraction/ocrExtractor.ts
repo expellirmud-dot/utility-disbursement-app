@@ -1,20 +1,37 @@
+import { renderPdfPageToDataUrl } from './pdfPageRenderer';
+
 export interface OcrResult {
   rawText: string;
   confidence: number;
   warnings: string[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function extractTextWithOcr(file: File): Promise<OcrResult> {
-  // In V1, this is a mock implementation to keep it browser-safe.
-  // A real implementation would use tesseract.js or a backend OCR API.
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        rawText: `Mock OCR Extraction\nAmount: 3500.50\nDate: 2024-05-29\nProvider: Mock Scanned Utility Provider\nBill Number: OCR-9999`,
-        confidence: 0.65, // Lower confidence for OCR to trigger human review
-        warnings: ['OCR extraction used, human review highly recommended.'],
-      });
-    }, 1500);
-  });
+  try {
+    // Dynamic import to avoid SSR issues
+    const Tesseract = await import('tesseract.js');
+    
+    let imageSource: File | string = file;
+    
+    // If it's a PDF, render the first page to an image data URL first
+    if (file.type === 'application/pdf') {
+      imageSource = await renderPdfPageToDataUrl(file);
+    }
+
+    // Run Tesseract OCR for Thai and English
+    const worker = await Tesseract.createWorker('tha+eng');
+    const { data } = await worker.recognize(imageSource);
+    await worker.terminate();
+
+    return {
+      rawText: data.text,
+      confidence: Math.max(0, Math.min(1, data.confidence / 100)), // Normalize to 0-1
+      warnings: ['OCR extraction used, human review highly recommended.']
+    };
+  } catch (error) {
+    console.error("OCR Error:", error);
+    // If real OCR fails, return a minimal error result instead of throwing, 
+    // to allow fallback mechanisms to gracefully handle it if designed to.
+    throw error;
+  }
 }

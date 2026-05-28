@@ -18,10 +18,11 @@ export function BillUpload() {
         const result = await processBillFile(file);
         
         let bill;
-        if (result.status === 'success' && result.bill) {
+        if (result.bill) {
+          // Use the bill from adapter even if it required OCR fallback
           bill = result.bill;
         } else {
-          // Fallback to mock OCR if it needs OCR or errors
+          // Complete fallback to mock OCR if adapter completely failed to produce a bill
           bill = await mockOcrExtract(file);
         }
         
