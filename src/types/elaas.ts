@@ -10,6 +10,7 @@ export interface ElaasPrepareData {
     netPayable: { label: string; value: string };
     description: { label: string; value: string };
     budgetCategory: { label: string; value: string };
+    fiscalYear: { label: string; value: string };
   };
   reviewNotice: string;
 }

@@ -1,12 +1,27 @@
 /**
- * Calculates withholding tax based on utility type.
- * 
- * MVP Assumptions:
- * - Electricity: 0% (Exempt)
- * - All other utilities: 1% (Standard government withholding rate for V1)
+ * taxRules.ts
+ *
+ * Withholding tax calculation for Thai utility disbursements.
+ *
+ * Business Rules (PROJECT_RULES.md):
+ * - Electricity (ค่าไฟฟ้า): exempt from withholding tax (0%)
+ * - All other utility types: 1% withholding tax (standard government rate, V1)
  */
-export const calculateTax = (amount: number, type: string): number => {
+import { ExpenseType } from '../types/disbursement';
+
+/**
+ * Calculate withholding tax for a given expense amount and type.
+ * Returns the tax amount (not the net payable).
+ */
+export const calculateTax = (amount: number, type: ExpenseType | string): number => {
   if (type === 'electricity') return 0;
-  // Assume 1% withholding tax for other utilities for V1
-  return amount * 0.01;
+  // Standard 1% withholding tax for all other utility types
+  return Math.round(amount * 0.01 * 100) / 100; // round to 2 decimal places
+};
+
+/**
+ * Check whether a given expense type is subject to withholding tax.
+ */
+export const isSubjectToWithholdingTax = (type: ExpenseType | string): boolean => {
+  return type !== 'electricity';
 };

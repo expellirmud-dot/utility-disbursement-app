@@ -1,0 +1,99 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+//
+// Thai Municipal Utility Disbursement App
+// TASK 008-A: Budget Master + Prisma Database Foundation
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------------------------------------------------------------------------
+// BudgetMaster
+// Maps expense types to Thai e-LAAS budget codes for a given fiscal year.
+// Fiscal year is Thai municipal B.E. (e.g. 2569).
+// ---------------------------------------------------------------------------
+model BudgetMaster {
+  id              Int      @id @default(autoincrement())
+  fiscalYear      Int      // Thai B.E. fiscal year, e.g. 2569
+  expenseType     String   // electricity | water | phone | postal | telecom | website | other
+  budgetCode      String   // e-LAAS budget code, e.g. "9969011134010001"
+  budgetName      String   // Thai display name, e.g. "ค่าไฟฟ้า"
+  approvedAmount  Float    @default(0)
+  committedAmount Float    @default(0)
+  disbursedAmount Float    @default(0)
+  remainingAmount Float    @default(0)
+  note            String?  // Optional remark
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([fiscalYear, expenseType])
+  @@index([fiscalYear])
+}
+
+// ---------------------------------------------------------------------------
+// UploadedBill
+// Metadata for a bill file uploaded by the officer.
+// Binary content is NOT stored — only metadata and extracted field results.
+// ---------------------------------------------------------------------------
+model UploadedBill {
+  id              String   @id @default(cuid())
+  fileName        String
+  fileSize        Int      // bytes
+  mimeType        String   @default("application/pdf")
+  uploadedAt      DateTime @default(now())
+
+  // OCR / extraction status
+  extractionStatus String  @default("pending") // pending | processing | done | failed
+
+  // Extracted fields (stored as JSON string for simplicity)
+  extractedJson   String?  // JSON of NormalizedBill fields after OCR
+
+  // Fiscal year assignment
+  fiscalYear      Int      // Thai B.E. fiscal year
+
+  // Relationship: a bill may generate one draft
+  draft           DisbursementDraft?
+
+  @@index([fiscalYear])
+  @@index([extractionStatus])
+}
+
+// ---------------------------------------------------------------------------
+// DisbursementDraft
+// Persisted working copy of a disbursement draft.
+// memoFields and readiness stored as JSON strings.
+// ---------------------------------------------------------------------------
+model DisbursementDraft {
+  id           String   @id @default(cuid())
+  fiscalYear   Int      // Thai B.E. fiscal year
+
+  // Expense type denormalized for quick filtering
+  expenseType  String   // electricity | water | phone | postal | telecom | website | other
+  providerName String
+
+  // JSON stringified: DisbursementDraft['memoFields']
+  memoFieldsJson  String
+
+  // JSON stringified: DisbursementDraft['readiness']
+  readinessJson   String
+
+  // Status
+  status       String   @default("draft") // draft | ready | submitted
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Optional link back to the source uploaded bill
+  uploadedBillId String?  @unique
+  uploadedBill   UploadedBill? @relation(fields: [uploadedBillId], references: [id])
+
+  @@index([fiscalYear])
+  @@index([status])
+  @@index([expenseType])
+}

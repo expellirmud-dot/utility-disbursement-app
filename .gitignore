@@ -63,3 +63,5 @@ Thumbs.db
 
 # CodeGraph local database/cache
 .codegraph/
+
+/src/generated/prisma

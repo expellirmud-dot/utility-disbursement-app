@@ -1,8 +1,12 @@
 import { NormalizedBill } from '../types/bill';
 import { DisbursementDraft } from '../types/disbursementDraft';
 import { calculateTax } from './taxRules';
+import { getFiscalYear } from './fiscalYear';
 
-export const buildDisbursementDraft = (normalizedBill: NormalizedBill, overrides: Partial<NormalizedBill> = {}): DisbursementDraft => {
+export const buildDisbursementDraft = (
+  normalizedBill: NormalizedBill,
+  overrides: Partial<NormalizedBill> = {}
+): DisbursementDraft => {
   const finalBill = { ...normalizedBill, ...overrides };
   const grossAmount = finalBill.grossAmount;
   const withholdingTax = calculateTax(grossAmount, finalBill.expenseType);
@@ -23,6 +27,10 @@ export const buildDisbursementDraft = (normalizedBill: NormalizedBill, overrides
     status = 'needs_review';
   }
 
+  // Use correct Thai municipal fiscal year logic (not naive calendar year).
+  const billDateParsed = finalBill.billDate ? new Date(finalBill.billDate) : new Date();
+  const fiscalYear = getFiscalYear(billDateParsed).toString();
+
   return {
     id: `draft-${Date.now()}`,
     readiness: {
@@ -36,7 +44,7 @@ export const buildDisbursementDraft = (normalizedBill: NormalizedBill, overrides
       billNumber: finalBill.billNumber,
       billDate: finalBill.billDate,
       serviceMonth: finalBill.serviceMonth,
-      fiscalYear: (new Date().getFullYear() + 543).toString(), // Buddhist Era
+      fiscalYear,
       grossAmount,
       withholdingTax,
       netPayable,
