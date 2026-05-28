@@ -38,3 +38,19 @@ Forbidden:
 - importing old ai_runtime runtime system
 - rebuilding old governance execution framework
 - using tooling docs as product code
+
+## Mandatory Inspection Tools
+
+Before implementation:
+1. Run Serena index/inspection for repository awareness.
+2. Use CodeGraph or equivalent code-map inspection before editing when available.
+3. If CodeGraph is unavailable, state that clearly and continue with Serena + file inspection.
+
+Required before edits:
+- inspect current src/app structure
+- inspect package.json
+- inspect PROJECT_RULES.md
+- inspect docs/NEW_PROJECT_BRIEF.md
+
+Do not implement from memory.
+Do not recreate old ai_runtime governance system.
