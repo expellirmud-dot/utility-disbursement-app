@@ -38,8 +38,8 @@ export function runAgreementGate(extractions: MethodExtraction[]): AgreementStat
   let agreedFieldCount = 0;
 
   for (const key of FIELD_KEYS) {
-    // Collect non-undefined values for this field across all methods
-    const values = extractions.map(e => e.fields[key]).filter(v => v !== undefined && v !== '');
+    // Collect non-empty values for this field across all methods
+    const values = extractions.map(e => e.fields[key]).filter(v => v !== undefined && v !== null && v !== '');
 
     if (values.length === 0) {
       // If no method found it, it's missing (not conflicting, just absent)
