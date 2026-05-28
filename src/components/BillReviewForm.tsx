@@ -14,7 +14,9 @@ export function BillReviewForm({ bill }: { bill: Bill }) {
   const [amount, setAmount] = useState(normalized.grossAmount);
 
   const draft = useMemo(() => {
-    return buildDisbursementDraft(normalized, { grossAmount: amount });
+    const result = buildDisbursementDraft(normalized, { grossAmount: amount });
+    localStorage.setItem('tempDraft', JSON.stringify(result));
+    return result;
   }, [normalized, amount]);
 
   return (
