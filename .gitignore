@@ -65,3 +65,9 @@ Thumbs.db
 .codegraph/
 
 /src/generated/prisma
+
+# SQLite local database
+dev.db
+dev.db-*
+prisma/dev.db
+prisma/dev.db-*
