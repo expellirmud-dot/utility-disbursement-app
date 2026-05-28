@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { DisbursementDraft } from '../../../types/disbursementDraft';
 import { buildMemo } from '../../../lib/memoBuilder';
 import { MemoPreview } from '../../../components/MemoPreview';
+import { PageHeader } from '../../../components/PageHeader';
+import { WorkflowStepper } from '../../../components/WorkflowStepper';
 
 function PreviewContent() {
   const router = useRouter();
@@ -62,27 +64,38 @@ function PreviewContent() {
   const prepareUrl = draft.id && draft.id !== 'mock-draft' ? `/elaas/prepare?draftId=${draft.id}` : '/elaas/prepare';
 
   return (
-    <main className="p-8 bg-zinc-100 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold">Preview Memo</h1>
-            {isSample && <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Demo Sample Data</span>}
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+      <PageHeader 
+        title="Output: Preview Memo" 
+        description="Verify the generated memorandum before finalizing the disbursement."
+        actions={
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/')} className="text-slate-500 text-sm hover:text-slate-900 font-medium transition-colors">Dashboard</button>
+            <button onClick={() => router.push(prepareUrl)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-2">
+              Prepare e-LAAS Data
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => router.push('/')} className="text-blue-500 text-sm hover:underline">← Dashboard</button>
-            <button onClick={() => router.push(prepareUrl)} className="bg-white border px-3 py-1 rounded text-sm hover:bg-zinc-50">Prepare e-LAAS Data →</button>
-          </div>
-        </div>
+        }
+      />
 
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex gap-3">
-          <span className="text-lg">⚠️</span>
-          <p><strong>Officer Verification Required:</strong> This is a preview generated from extracted data. Please verify all amounts and dates against the original bill before printing and signing.</p>
-        </div>
-
-        <MemoPreview memo={memo} />
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <WorkflowStepper currentStep="memo" />
       </div>
-    </main>
+
+      {isSample && (
+        <div className="inline-block bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+          Demo Sample Data
+        </div>
+      )}
+
+      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex gap-3 shadow-sm">
+        <span className="text-lg shrink-0">⚠️</span>
+        <p className="leading-relaxed"><strong className="font-semibold">Officer Verification Required:</strong> This is a preview generated from extracted data. Please verify all amounts and dates against the original bill before printing and signing.</p>
+      </div>
+
+      <MemoPreview memo={memo} />
+    </div>
   );
 }
 

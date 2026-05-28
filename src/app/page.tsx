@@ -1,62 +1,107 @@
+"use client";
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { PageHeader } from '../components/PageHeader';
+import { StatTile } from '../components/StatTile';
+import { WorkflowStepper } from '../components/WorkflowStepper';
+import { DisbursementDraft } from '../types/disbursementDraft';
 
 export default function Home() {
+  const [drafts, setDrafts] = useState<DisbursementDraft[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDrafts = async () => {
+      try {
+        const res = await fetch('/api/drafts?fiscalYear=2569');
+        if (res.ok) {
+          const { data } = await res.json();
+          setDrafts(data || []);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDrafts();
+  }, []);
+
+  const needsReviewCount = drafts.filter(d => d.readiness?.status === 'needs_review').length;
+  const readyCount = drafts.filter(d => d.readiness?.status === 'ready').length;
+  const blockedCount = drafts.filter(d => d.readiness?.status === 'blocked').length;
+  const totalAmount = drafts.reduce((sum, d) => sum + (d.memoFields?.netPayable || 0), 0);
+
   return (
-    <main className="p-8 max-w-6xl mx-auto space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold">Utility Disbursement Dashboard</h1>
-        <p className="text-zinc-500">Manage utility bill extraction and disbursement preparation</p>
-      </header>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <PageHeader 
+        title="Operations Dashboard" 
+        description="Monitor extraction workflows and track disbursement readiness."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 border rounded-xl bg-white shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-500">Step 1: Intake</span>
-            <span className="px-2 py-1 text-xs font-bold bg-blue-100 text-blue-700 rounded">START</span>
-          </div>
-          <h3 className="text-lg font-semibold">Bill Upload</h3>
-          <p className="text-sm text-zinc-500">Upload utility bills to extract data using OCR</p>
-          <Link href="/bills/upload" className="block w-full text-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Upload New Bill
-          </Link>
-        </div>
-
-        <div className="p-6 border rounded-xl bg-white shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-500">Step 2: Verification</span>
-            <span className="px-2 py-1 text-xs font-bold bg-zinc-100 text-zinc-700 rounded">PENDING</span>
-          </div>
-          <h3 className="text-lg font-semibold">Bill Review</h3>
-          <p className="text-sm text-zinc-500">Review extracted data and calculate tax</p>
-          <Link href="/bills/review" className="block w-full text-center py-2 px-4 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors">
-            Review Drafts
-          </Link>
-        </div>
-
-        <div className="p-6 border rounded-xl bg-white shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-500">Step 3: Output</span>
-            <span className="px-2 py-1 text-xs font-bold bg-zinc-100 text-zinc-700 rounded">LOCKED</span>
-          </div>
-          <h3 className="text-lg font-semibold">Finalization</h3>
-          <p className="text-sm text-zinc-500">Preview memo and prepare e-LAAS data</p>
-          <div className="flex flex-col gap-2">
-            <Link href="/memos/preview" className="block w-full text-center py-2 px-4 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors text-sm">
-              Memo Preview
-            </Link>
-            <Link href="/elaas/prepare" className="block w-full text-center py-2 px-4 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors text-sm">
-              e-LAAS Prepare
-            </Link>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatTile title="Total Drafts" value={drafts.length} color="slate" />
+        <StatTile title="Needs Review" value={needsReviewCount} color="amber" />
+        <StatTile title="Ready to Memo" value={readyCount} color="green" />
+        <StatTile title="Blocked" value={blockedCount} color="red" />
+        <StatTile title="Net Payable" value={`${totalAmount.toLocaleString()} ฿`} color="blue" />
       </div>
 
-      <div className="p-6 border rounded-xl bg-zinc-50 space-y-4">
-        <h2 className="text-xl font-semibold">Quick Access</h2>
-        <div className="flex flex-wrap gap-4">
-          <Link href="/disbursements" className="text-blue-600 hover:underline text-sm font-medium">View All Disbursements →</Link>
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 className="text-lg font-semibold mb-4 text-slate-800">Standard Workflow</h3>
+        <WorkflowStepper currentStep="upload" />
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-800">Recent Drafts Requiring Action</h2>
+          <Link href="/disbursements" className="text-sm text-blue-600 font-medium hover:underline">
+            View All →
+          </Link>
+        </div>
+        
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          {loading ? (
+            <div className="p-8 text-center text-slate-500">Loading worklist...</div>
+          ) : drafts.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">No recent drafts found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="p-4 font-medium">Provider</th>
+                    <th className="p-4 font-medium">Expense Type</th>
+                    <th className="p-4 font-medium">Amount</th>
+                    <th className="p-4 font-medium">Readiness</th>
+                    <th className="p-4 font-medium text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {drafts.slice(0, 5).map(draft => (
+                    <tr key={draft.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4 font-medium text-slate-900">{draft.memoFields?.providerName}</td>
+                      <td className="p-4 capitalize text-slate-600">{draft.memoFields?.expenseType}</td>
+                      <td className="p-4 text-slate-900">{(draft.memoFields?.grossAmount || 0).toLocaleString()} ฿</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${draft.readiness?.status === 'ready' ? 'bg-green-100 text-green-800' : draft.readiness?.status === 'blocked' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {draft.readiness?.status?.replace('_', ' ') || 'UNKNOWN'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <Link href={`/memos/preview?draftId=${draft.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-xs">
+                          Review →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }
