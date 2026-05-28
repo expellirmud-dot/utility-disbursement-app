@@ -60,3 +60,6 @@ out/
 Thumbs.db
 .DS_Store
 
+
+# CodeGraph local database/cache
+.codegraph/
