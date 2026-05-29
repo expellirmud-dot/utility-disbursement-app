@@ -1,23 +1,28 @@
 import { Memo } from '../types/memo';
 
-const MISSING_AMOUNT = 'ยังไม่ได้ระบุ';
+type FieldValue = string | number | undefined | null;
 
-const formatAmount = (amount: number | null): string => {
-  if (typeof amount !== 'number' || !Number.isFinite(amount)) return MISSING_AMOUNT;
-  return amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-const MissingMarker = ({ value }: { value: string }) => (
-  <span className="rounded bg-amber-100 px-2 py-0.5 font-sans text-xs font-semibold text-amber-800">
-    {value}
+const missingMarker = (fieldName: string) => (
+  <span className="inline-flex rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 font-sans text-xs font-semibold text-amber-800">
+    Missing: {fieldName}
   </span>
 );
 
-const MemoField = ({ label, value }: { label: string; value: string }) => (
-  <div>
-    <span className="font-bold">{label}:</span> <MissingMarker value={value} />
-  </div>
-);
+const isMissing = (value: FieldValue) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'number') return Number.isNaN(value);
+  return value.trim().length === 0;
+};
+
+const renderText = (value: FieldValue, fieldName: string) => {
+  if (isMissing(value)) return missingMarker(fieldName);
+  return value;
+};
+
+const renderMoney = (value: number | undefined, fieldName: string) => {
+  if (isMissing(value) || typeof value !== 'number') return missingMarker(fieldName);
+  return value.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export function MemoPreview({ memo }: { memo: Memo }) {
   return (
@@ -34,71 +39,84 @@ export function MemoPreview({ memo }: { memo: Memo }) {
       <div className="max-w-3xl mx-auto p-12 bg-white shadow-lg border border-gray-200 font-serif text-black print:shadow-none print:border-none print:p-0">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold">บันทึกข้อความ</h1>
-          <p className="mt-2 font-sans text-xs text-amber-700 print:text-black">
-            แบบร่างสำหรับตรวจสอบ — ข้อมูลราชการที่ยังไม่ระบุต้องให้เจ้าหน้าที่กรอกก่อนใช้งานจริง
-          </p>
+          <p className="mt-2 text-sm text-slate-600 font-sans">Municipal memorandum preview</p>
         </div>
 
-        <div className="space-y-3 mb-6 text-sm leading-relaxed">
-          <MemoField label="หน่วยงานราชการ" value={memo.header.governmentUnit} />
-          <div className="flex justify-between gap-6">
-            <div className="space-y-3">
-              <MemoField label="ส่วนราชการ" value={memo.header.department} />
-              <MemoField label="ฝ่าย/งาน" value={memo.header.section} />
+        <div className="space-y-4 text-sm leading-relaxed">
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">ส่วนราชการ</span>
+            <span>{renderText(memo.governmentUnit, 'government unit')}</span>
+          </div>
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">ที่</span>
+            <span>{renderText(memo.documentNumber, 'document number')}</span>
+          </div>
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">เรื่อง</span>
+            <span>{renderText(memo.subject, 'subject')}</span>
+          </div>
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">เรียน</span>
+            <span>{renderText(memo.recipient, 'recipient')}</span>
+          </div>
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">อ้างถึง</span>
+            <span>{renderText(memo.referenceSection, 'reference section')}</span>
+          </div>
+          <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-slate-200 pb-3">
+            <span className="font-bold">สิ่งที่ส่งมาด้วย</span>
+            <span>{renderText(memo.attachmentsSection, 'attachments section')}</span>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-lg border border-slate-300">
+          <div className="border-b border-slate-300 bg-slate-50 px-4 py-3 font-sans text-sm font-semibold text-slate-700">
+            Payment details from reviewed draft fields
+          </div>
+          <div className="divide-y divide-slate-200 text-sm">
+            <div className="grid grid-cols-[12rem_1fr] gap-3 px-4 py-3">
+              <span className="font-bold">ผู้ให้บริการ</span>
+              <span>{renderText(memo.providerName, 'provider name')}</span>
             </div>
-            <div className="space-y-3 text-right">
-              <MemoField label="ที่" value={memo.header.docNumber} />
-              <MemoField label="วันที่" value={memo.header.memoDate} />
+            <div className="grid grid-cols-[12rem_1fr] gap-3 px-4 py-3">
+              <span className="font-bold">จำนวนเงิน</span>
+              <span>{renderMoney(memo.amount, 'amount')} บาท</span>
+            </div>
+            <div className="grid grid-cols-[12rem_1fr] gap-3 px-4 py-3">
+              <span className="font-bold">ภาษีหัก ณ ที่จ่าย</span>
+              <span>{renderMoney(memo.taxAmount, 'tax amount')} บาท</span>
+            </div>
+            <div className="grid grid-cols-[12rem_1fr] gap-3 px-4 py-3">
+              <span className="font-bold">ยอดจ่ายสุทธิ</span>
+              <span>{renderMoney(memo.netPayableAmount, 'net payable amount')} บาท</span>
+            </div>
+            <div className="grid grid-cols-[12rem_1fr] gap-3 px-4 py-3">
+              <span className="font-bold">ปีงบประมาณ</span>
+              <span>{renderText(memo.fiscalYear, 'fiscal year')}</span>
             </div>
           </div>
         </div>
 
-        <div className="mb-4 text-sm leading-relaxed">
-          <span className="font-bold">เรื่อง:</span> <MissingMarker value={memo.content.subject} />
-        </div>
-        <div className="mb-4 text-sm leading-relaxed">
-          <span className="font-bold">เรียน:</span> <MissingMarker value={memo.content.recipient} />
-        </div>
-
-        <div className="mb-6 text-sm leading-relaxed">
-          <p className="font-bold">อ้างถึง:</p>
-          <ul className="mt-1 list-disc pl-8 font-sans text-xs">
-            {memo.content.references.map((reference, index) => (
-              <li key={`${reference}-${index}`}><MissingMarker value={reference} /></li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mb-6 text-sm leading-relaxed">
-          <p className="font-bold">สิ่งที่ส่งมาด้วย:</p>
-          <ul className="mt-1 list-disc pl-8 font-sans text-xs">
-            {memo.content.attachments.map((attachment, index) => (
-              <li key={`${attachment}-${index}`}><MissingMarker value={attachment} /></li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mb-8 leading-loose text-sm text-justify">
-          <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3 font-sans text-xs text-amber-800 print:border-gray-300 print:bg-white print:text-black">
-            <span className="font-semibold">เนื้อหาบันทึกข้อความ:</span> {memo.content.body}
+        <div className="mt-8 grid grid-cols-2 gap-4 text-xs text-slate-600 font-sans">
+          <div>
+            <span className="font-semibold">Expense type:</span> {renderText(memo.expenseType, 'expense type')}
           </div>
-          <div className="pl-8 space-y-1">
-            <p>ผู้ให้บริการ: {memo.content.details.providerName}</p>
-            <p>ประเภทรายจ่าย: {memo.content.details.expenseType}</p>
-            <p>เลขที่ใบแจ้งหนี้: {memo.content.details.billNumber}</p>
-            <p>วันที่ในใบแจ้งหนี้: {memo.content.details.billDate}</p>
-            <p>เดือนที่ใช้บริการ: {memo.content.details.serviceMonth}</p>
-            <p>ปีงบประมาณ: {memo.content.details.fiscalYear}</p>
-            <p>จำนวนเงินรวมทั้งสิ้น: <span className="font-semibold">{formatAmount(memo.content.details.grossAmount)}</span> บาท</p>
-            <p>หักภาษี ณ ที่จ่าย: <span className="font-semibold">{formatAmount(memo.content.details.withholdingTax)}</span> บาท</p>
-            <p>คงเหลือยอดจ่ายสุทธิ: <span className="font-semibold">{formatAmount(memo.content.details.netPayable)}</span> บาท</p>
+          <div>
+            <span className="font-semibold">Service month:</span> {renderText(memo.serviceMonth, 'service month')}
+          </div>
+          <div>
+            <span className="font-semibold">Bill number:</span> {renderText(memo.billNumber, 'bill number')}
+          </div>
+          <div>
+            <span className="font-semibold">Bill date:</span> {renderText(memo.billDate, 'bill date')}
           </div>
         </div>
+
         <div className="flex justify-end mt-16 text-sm">
           <div className="text-center w-72 leading-relaxed">
-            <p className="mb-8">{memo.footer.approvalSignature}</p>
+            <p className="mb-8">(ลงชื่อ)...........................................................</p>
             <p className="mb-4">ตำแหน่ง..........................................................</p>
-            <p><MissingMarker value={memo.footer.approvalDate} /></p>
+            <p>วันที่.......เดือน..........................พ.ศ. .......</p>
           </div>
         </div>
       </div>

@@ -2,6 +2,20 @@ import { ExpenseType } from './disbursement';
 
 export type ReadinessStatus = 'ready' | 'needs_review' | 'blocked';
 
+export interface OfficialMemoFields {
+  governmentUnit?: string;
+  documentNumber?: string;
+  subject?: string;
+  recipient?: string;
+  referenceSection?: string;
+  attachmentsSection?: string;
+  providerName: string;
+  amount: number;
+  taxAmount: number;
+  netPayableAmount: number;
+  fiscalYear: string;
+}
+
 export interface DisbursementDraft {
   id: string;
   readiness: {
@@ -9,15 +23,16 @@ export interface DisbursementDraft {
     missingFields: string[];
     blockers: string[];
   };
-  memoFields: {
+  memoFields: OfficialMemoFields & {
     expenseType: ExpenseType;
-    providerName: string;
     billNumber?: string;
     billDate?: string;
     serviceMonth?: string;
-    fiscalYear: string;
+    /** @deprecated Use amount for official memo rendering. */
     grossAmount: number;
+    /** @deprecated Use taxAmount for official memo rendering. */
     withholdingTax: number;
+    /** @deprecated Use netPayableAmount for official memo rendering. */
     netPayable: number;
   };
   metadata: {
