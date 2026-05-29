@@ -10,6 +10,7 @@ import { buildDisbursementDraft } from '../lib/disbursementDraftBuilder';
 import { DisbursementDraftPreview } from './DisbursementDraftPreview';
 import { ReadinessChecklist } from './ReadinessChecklist';
 import { ExtractionResult } from '../types/extraction';
+import { EvidenceReviewPanel } from './EvidenceReviewPanel';
 
 // Extending Bill locally if it carries extraction metadata for the UI
 interface ExtendedBill extends Bill {
@@ -88,6 +89,12 @@ export function BillReviewForm({ bill }: { bill: ExtendedBill }) {
           <DisbursementDraftPreview draft={draft} onPreview={() => saveDraftAndNavigate('/memos/preview')} onPrepare={() => saveDraftAndNavigate('/elaas/prepare')} />
         </div>
       </div>
+      <EvidenceReviewPanel
+        methods={bill.extractionMetadata?.methods}
+        agreedFields={bill.extractionMetadata?.agreement?.agreedFields}
+        normalized={normalized}
+        finalGrossAmount={amount}
+      />
       <div className="flex items-center justify-between pt-4 border-t">
         <button onClick={() => router.push('/')} className="text-sm text-zinc-500 hover:text-zinc-700">
           ← Return to Dashboard

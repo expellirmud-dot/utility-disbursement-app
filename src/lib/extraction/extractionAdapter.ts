@@ -12,6 +12,29 @@ export interface AdapterResult extends ExtractionResult {
   bill?: Bill;
 }
 
+function aiVerifierFields(aiResult: Awaited<ReturnType<typeof runGeminiAiVerifier>>) {
+  return {
+    grossAmount: aiResult.grossAmount?.value ?? undefined,
+    providerName: aiResult.providerName?.value ?? undefined,
+    expenseType: aiResult.expenseType?.value ?? undefined,
+    billNumber: aiResult.billNumber?.value ?? undefined,
+    billDate: aiResult.billDate?.value ?? undefined,
+    serviceMonth: aiResult.serviceMonth?.value ?? undefined,
+    customerNumber: aiResult.customerNumber?.value ?? undefined
+  };
+}
+
+async function addAiVerifierEvidence(methods: MethodExtraction[], rawText: string) {
+  if (methods.some((item) => item.method === 'ai_verifier_placeholder')) return;
+
+  const aiResult = await runGeminiAiVerifier(rawText || 'mock text');
+  methods.push({
+    method: 'ai_verifier_placeholder',
+    confidence: aiResult.overallConfidence,
+    fields: aiVerifierFields(aiResult)
+  });
+}
+
 export async function processBillFile(file: File): Promise<AdapterResult> {
   try {
     const methods: MethodExtraction[] = [];
@@ -34,20 +57,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
       });
       
       // Call Gemini AI Verifier for OCR fallback
-      const aiResult = await runGeminiAiVerifier(primaryRawText || 'mock text');
-      methods.push({
-        method: 'ai_verifier_placeholder',
-        confidence: aiResult.overallConfidence,
-        fields: {
-          grossAmount: aiResult.grossAmount?.value ?? undefined,
-          providerName: aiResult.providerName?.value ?? undefined,
-          expenseType: aiResult.expenseType?.value ?? undefined,
-          billNumber: aiResult.billNumber?.value ?? undefined,
-          billDate: aiResult.billDate?.value ?? undefined,
-          serviceMonth: aiResult.serviceMonth?.value ?? undefined,
-          customerNumber: aiResult.customerNumber?.value ?? undefined
-        }
-      });
+      await addAiVerifierEvidence(methods, primaryRawText);
     } else if (file.type === 'application/pdf') {
       const rawText = await extractTextFromPdf(file);
       primaryRawText = rawText;
@@ -83,6 +93,8 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
           fields: parsedOcrFields
         });
       }
+
+      await addAiVerifierEvidence(methods, primaryRawText);
     } else {
       return { status: 'error', error: 'Unsupported file type' };
     }
@@ -110,7 +122,7 @@ export async function processBillFile(file: File): Promise<AdapterResult> {
         date: agreement.agreedFields.billDate || agreement.agreedFields.issueDate,
         documentNumber: agreement.agreedFields.documentNumber,
         issueDate: agreement.agreedFields.issueDate,
-        accountNumber: agreement.agreedFields.accountNumber,
+        accountNumber: agreement.agreedFields.accountNumber || agreement.agreedFields.customerNumber,
         signer: agreement.agreedFields.signer
       }
     };
