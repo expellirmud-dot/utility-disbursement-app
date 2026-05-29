@@ -25,6 +25,11 @@ export function BillUpload() {
           // Complete fallback to mock OCR if adapter completely failed to produce a bill
           bill = await mockOcrExtract(file);
         }
+
+        const billWithEvidence = {
+          ...bill,
+          extractionMetadata: result,
+        };
         
         try {
           const uploadRes = await fetch('/api/uploads', {
@@ -34,7 +39,7 @@ export function BillUpload() {
               fileName: file.name,
               fileSize: file.size,
               mimeType: file.type,
-              extractedJson: JSON.stringify(bill),
+              extractedJson: JSON.stringify(billWithEvidence),
             })
           });
           if (uploadRes.ok) {
@@ -46,7 +51,7 @@ export function BillUpload() {
         }
         
         // In a real app, we might pass this via URL params, context, or state management
-        localStorage.setItem('tempBill', JSON.stringify(bill));
+        localStorage.setItem('tempBill', JSON.stringify(billWithEvidence));
         router.push('/bills/review');
       } catch (error) {
         console.error('Failed to process bill:', error);
